@@ -9,7 +9,8 @@ Morgan SCARA robot arm for drawing on paper with a sharpie.
 |---|---|---|
 | SCARA_LINKAGE_1 (shoulder to elbow) | 116 mm | Approximate - may need refinement |
 | SCARA_LINKAGE_2 (elbow to end effector) | 114 mm | Approximate - may need refinement |
-| PRINTABLE_RADIUS | 220 mm | Conservative (theoretical max is 230 mm) |
+| Reach radius (theoretical) | 230 mm | `SCARA_LINKAGE_1 + SCARA_LINKAGE_2` |
+| Recommended working radius | 220 mm | Stay away from near-straight-arm singularity |
 | Gear reduction | 1:3 | Both motors, via pulleys |
 
 Arm lengths are compile-time constants. To adjust, edit `Marlin/Configuration.h`
@@ -55,12 +56,28 @@ PlatformIO env: `mega2560`
 - `FEEDRATE_SCALING` enabled - Converts G-code mm/s to deg/s automatically
 - `EEPROM_SETTINGS` enabled - Persist calibration with M500
 - `X_SAFETY_STOP` / `Y_SAFETY_STOP` enabled - Endstops act as safety limits
+- `PRINTABLE_RADIUS` is computed by Marlin for SCARA as `L1 + L2` (230 mm)
 
 ### SCARA Offsets
 
 `SCARA_OFFSET_X` and `SCARA_OFFSET_Y` define the shoulder pivot position relative
 to the coordinate origin (0,0). Currently set to (0,0), meaning the origin IS the
 shoulder pivot. Adjust at runtime with `M665` and save with `M500`.
+
+### How to Measure SCARA Offset (Practical Method)
+
+1. Pick where you want drawing `(0,0)` on the paper fixture (usually front-left corner).
+2. Measure shoulder pivot center coordinates in that same frame:
+   - `SCARA_OFFSET_X` = shoulder X position from drawing origin
+   - `SCARA_OFFSET_Y` = shoulder Y position from drawing origin
+3. Start with approximate values, then fine tune:
+   - Manually set arm to your known startup pose
+   - `G92 X0 Y0`
+   - Command known points (for example `G1 X100 Y0`, `G1 X0 Y100`) and compare to real pen tip location
+   - Correct offsets with `M665 P<shoulder_offset> T<elbow_offset>` for angular correction
+4. Save stable runtime calibration with `M500`.
+
+For early bring-up you can keep offsets at `(0,0)` and place paper relative to the shoulder pivot.
 
 ## Endstops
 
