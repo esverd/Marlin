@@ -1078,8 +1078,8 @@
   // SCARA tower offset (position of Tower relative to bed zero position)
   // This needs to be reasonably accurate as it defines the printbed position in the SCARA space.
   // With (0,0) the coordinate origin is at the shoulder pivot.
-  #define SCARA_OFFSET_X  117       // (mm) Adjust with M665
-  #define SCARA_OFFSET_Y  40        // (mm) Adjust with M665
+  #define SCARA_OFFSET_X  0         // (mm) Adjust with M665
+  #define SCARA_OFFSET_Y  0         // (mm) Adjust with M665
 
   #if ENABLED(MORGAN_SCARA)
 
@@ -1239,7 +1239,7 @@
 #define X_MAX_ENDSTOP_HIT_STATE HIGH
 #define Y_MIN_ENDSTOP_HIT_STATE HIGH
 #define Y_MAX_ENDSTOP_HIT_STATE HIGH
-#define Z_MIN_ENDSTOP_HIT_STATE HIGH
+#define Z_MIN_ENDSTOP_HIT_STATE LOW
 #define Z_MAX_ENDSTOP_HIT_STATE HIGH
 #define I_MIN_ENDSTOP_HIT_STATE HIGH
 #define I_MAX_ENDSTOP_HIT_STATE HIGH

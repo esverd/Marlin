@@ -28,6 +28,7 @@ Arm lengths are compile-time constants. To adjust, edit `Marlin/Configuration.h`
 | Motor 2 (elbow/B-axis) | Y driver slot on CNC shield |
 | Endstop - shoulder | X_STOP_PIN (pin 9 on CNC shield) |
 | Endstop - elbow | Y_STOP_PIN (pin 10 on CNC shield) |
+| Z endstop | Not installed |
 
 ### Steps Per Degree Calculation
 
@@ -57,14 +58,14 @@ PlatformIO env: `mega2560`
 - `EEPROM_SETTINGS` enabled - Persist calibration with M500
 - `X_SAFETY_STOP` / `Y_SAFETY_STOP` enabled - Endstops act as safety limits
 - `PRINTABLE_RADIUS` is computed by Marlin for SCARA as `L1 + L2` (230 mm)
-- `SCARA_OFFSET_X 117` / `SCARA_OFFSET_Y 40` - Current default coordinate offset
+- `SCARA_OFFSET_X 0` / `SCARA_OFFSET_Y 0` - Current default coordinate offset
 - `MIDDLE_DEAD_ZONE_R 38` - Blocks unreachable / unstable center region
 
 ### SCARA Offsets
 
 `SCARA_OFFSET_X` and `SCARA_OFFSET_Y` define the shoulder pivot position relative
-to the coordinate origin (0,0). Currently set to `(117, 40)`. Adjust at runtime
-with `M665` and save with `M500`.
+to the coordinate origin (0,0). Currently set to `(0, 0)`, so the origin is the
+shoulder pivot. Adjust at runtime with `M665` and save with `M500`.
 
 ### How to Measure SCARA Offset (Practical Method)
 
@@ -87,6 +88,36 @@ SCARA center region.
 Endstops are wired to X and Y stop pins on the CNC shield. In the stock Morgan SCARA
 firmware, X/Y endstops are NOT used for homing (homing assumes a known manual position).
 They are configured as safety stops only.
+
+`Z_MIN_ENDSTOP_HIT_STATE` is set to `LOW` to avoid false `z_min: TRIGGERED` reports
+when no Z endstop is connected.
+
+### Mechanical Home Reference (Current Build)
+
+Measured at endstop contact:
+- Joint 1 (L1 relative to world): `-30°`
+- Joint 2 (L2 relative to L1): `+150°`
+
+With `L1=116`, `L2=114`, `SCARA_OFFSET_X=0`, `SCARA_OFFSET_Y=0`:
+
+```text
+theta1 = -30°
+theta2_abs = theta1 + theta2_rel = +120°
+
+X_home = 0 + 116*cos(-30°) + 114*cos(+120°) = 43.46
+Y_home = 0 + 116*sin(-30°) + 114*sin(+120°) = 40.73
+```
+
+Practical startup sequence (until automatic homing is implemented):
+
+```gcode
+; Put arm at mechanical home (both linkage endstops contacted)
+M17
+G92 X43.46 Y40.73 Z0
+M114
+```
+
+Do not use `G28` for XY on Morgan SCARA in stock Marlin.
 
 Automatic homing using endstops is planned as a future feature.
 
