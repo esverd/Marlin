@@ -1078,8 +1078,8 @@
   // SCARA tower offset (position of Tower relative to bed zero position)
   // This needs to be reasonably accurate as it defines the printbed position in the SCARA space.
   // With (0,0) the coordinate origin is at the shoulder pivot.
-  #define SCARA_OFFSET_X  0         // (mm) Adjust with M665
-  #define SCARA_OFFSET_Y  0         // (mm) Adjust with M665
+  #define SCARA_OFFSET_X  117       // (mm) Adjust with M665
+  #define SCARA_OFFSET_Y  40        // (mm) Adjust with M665
 
   #if ENABLED(MORGAN_SCARA)
 
@@ -1087,7 +1087,7 @@
     #define FEEDRATE_SCALING        // Convert XY feedrate from mm/s to degrees/s on the fly
 
     // Radius around the center where the arm cannot reach
-    #define MIDDLE_DEAD_ZONE_R   0  // (mm)
+    #define MIDDLE_DEAD_ZONE_R  38  // (mm)
 
   #elif ENABLED(MP_SCARA)
 

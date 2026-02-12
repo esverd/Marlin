@@ -57,12 +57,14 @@ PlatformIO env: `mega2560`
 - `EEPROM_SETTINGS` enabled - Persist calibration with M500
 - `X_SAFETY_STOP` / `Y_SAFETY_STOP` enabled - Endstops act as safety limits
 - `PRINTABLE_RADIUS` is computed by Marlin for SCARA as `L1 + L2` (230 mm)
+- `SCARA_OFFSET_X 117` / `SCARA_OFFSET_Y 40` - Current default coordinate offset
+- `MIDDLE_DEAD_ZONE_R 38` - Blocks unreachable / unstable center region
 
 ### SCARA Offsets
 
 `SCARA_OFFSET_X` and `SCARA_OFFSET_Y` define the shoulder pivot position relative
-to the coordinate origin (0,0). Currently set to (0,0), meaning the origin IS the
-shoulder pivot. Adjust at runtime with `M665` and save with `M500`.
+to the coordinate origin (0,0). Currently set to `(117, 40)`. Adjust at runtime
+with `M665` and save with `M500`.
 
 ### How to Measure SCARA Offset (Practical Method)
 
@@ -77,7 +79,8 @@ shoulder pivot. Adjust at runtime with `M665` and save with `M500`.
    - Correct offsets with `M665 P<shoulder_offset> T<elbow_offset>` for angular correction
 4. Save stable runtime calibration with `M500`.
 
-For early bring-up you can keep offsets at `(0,0)` and place paper relative to the shoulder pivot.
+`MIDDLE_DEAD_ZONE_R` is currently `38 mm` to avoid commanding moves too close to the
+SCARA center region.
 
 ## Endstops
 
