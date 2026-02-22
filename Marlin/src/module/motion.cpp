@@ -33,11 +33,6 @@
 #include "../lcd/marlinui.h"
 #include "../inc/MarlinConfig.h"
 
-#if IS_SCARA
-  #include "../libs/buzzer.h"
-  #include "../lcd/marlinui.h"
-#endif
-
 #if ENABLED(POLAR)
   #include "polar.h"
 #endif
@@ -2487,14 +2482,9 @@ void prepare_line_to_destination() {
 
   void homeaxis(const AxisEnum axis) {
 
-    #if ANY(MORGAN_SCARA, MP_SCARA)
-      // Only Z homing (with probe) is permitted
-      if (axis != Z_AXIS) { BUZZ(100, 880); return; }
-    #else
-      #define _CAN_HOME(A) (axis == _AXIS(A) && (ANY(A##_SPI_SENSORLESS, HAS_##A##_STATE) || TERN0(HOMING_Z_WITH_PROBE, _AXIS(A) == Z_AXIS)))
-      #define _ANDCANT(N) && !_CAN_HOME(N)
-      if (true MAIN_AXIS_MAP(_ANDCANT)) return;
-    #endif
+    #define _CAN_HOME(A) (axis == _AXIS(A) && (ANY(A##_SPI_SENSORLESS, HAS_##A##_STATE) || TERN0(HOMING_Z_WITH_PROBE, _AXIS(A) == Z_AXIS)))
+    #define _ANDCANT(N) && !_CAN_HOME(N)
+    if (true MAIN_AXIS_MAP(_ANDCANT)) return;
 
     if (DEBUGGING(LEVELING)) DEBUG_ECHOLNPGM(">>> homeaxis(", C(AXIS_CHAR(axis)), ")");
 
@@ -2775,8 +2765,20 @@ void prepare_line_to_destination() {
 
     #if IS_SCARA
 
-      set_axis_is_at_home(axis);
-      sync_plan_position();
+      if (axis == X_AXIS || axis == Y_AXIS) {
+        // SCARA XY is known only once both joint homing moves completed.
+        set_axis_homed(axis);
+        set_axis_trusted(axis);
+        if (axis_was_homed(X_AXIS) && axis_was_homed(Y_AXIS)) {
+          set_axis_is_at_home(X_AXIS);
+          set_axis_is_at_home(Y_AXIS);
+          sync_plan_position();
+        }
+      }
+      else {
+        set_axis_is_at_home(axis);
+        sync_plan_position();
+      }
 
     #elif ENABLED(DELTA)
 

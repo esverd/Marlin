@@ -488,7 +488,12 @@ inline bool all_axes_trusted()                        { return main_axes_mask ==
 void home_if_needed(const bool keeplev=false);
 
 #if ENABLED(NO_MOTION_BEFORE_HOMING)
-  #define MOTION_CONDITIONS (IsRunning() && !homing_needed_error())
+  #if IS_SCARA
+    // Drawing SCARA workflow enforces XY homing before motion. Z homing is optional.
+    #define MOTION_CONDITIONS (IsRunning() && !homing_needed_error(_BV(X_AXIS) | _BV(Y_AXIS)))
+  #else
+    #define MOTION_CONDITIONS (IsRunning() && !homing_needed_error())
+  #endif
 #else
   #define MOTION_CONDITIONS IsRunning()
 #endif

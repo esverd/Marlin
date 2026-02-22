@@ -73,7 +73,7 @@
 #define DEBUG_OUT ENABLED(DEBUG_LEVELING_FEATURE)
 #include "../../core/debug_out.h"
 
-#if ENABLED(QUICK_HOME)
+#if ENABLED(QUICK_HOME) && !IS_SCARA
 
   static void quick_home_xy() {
 
@@ -124,7 +124,7 @@
     #endif
   }
 
-#endif // QUICK_HOME
+#endif // QUICK_HOME && !IS_SCARA
 
 #if ENABLED(Z_SAFE_HOMING)
 
@@ -406,8 +406,10 @@ void GcodeSuite::G28() {
 
       #endif // HAS_Z_AXIS
 
-      // Diagonal move first if both are homing
-      TERN_(QUICK_HOME, if (doX && doY) quick_home_xy());
+      // Diagonal quick-home is disabled for SCARA.
+      #if ENABLED(QUICK_HOME) && !IS_SCARA
+        if (doX && doY) quick_home_xy();
+      #endif
 
       #if HAS_Y_AXIS
         // Home Y (before X)
