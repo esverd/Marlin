@@ -52,8 +52,10 @@ PlatformIO env: `mega2560`
 - `EXTRUDERS 0` - No extruder
 - `TEMP_SENSOR_0 0` / `TEMP_SENSOR_BED 0` - No thermal hardware
 - `DEFAULT_AXIS_STEPS_PER_UNIT { 13.333, 13.333, 400 }` - A/B in steps/deg, Z in steps/mm
-- `DEFAULT_MAX_FEEDRATE { 90, 90, 5 }` - A/B in deg/s, Z in mm/s
-- `DEFAULT_MAX_ACCELERATION { 500, 500, 100 }` - Conservative starting values
+- `DEFAULT_MAX_FEEDRATE { 25, 25, 3 }` - Reduced for safe bring-up
+- `DEFAULT_MAX_ACCELERATION { 100, 100, 60 }` - Reduced to minimize skipped steps
+- `DEFAULT_ACCELERATION / DEFAULT_TRAVEL_ACCELERATION { 100, 100, 100 }`
+- `DEFAULT_XJERK / DEFAULT_YJERK { 1.5, 1.5 }` - Lowered to reduce abrupt joint shocks
 - `FEEDRATE_SCALING` enabled - Converts G-code mm/s to deg/s automatically
 - `EEPROM_SETTINGS` enabled - Persist calibration with M500
 - `X_SAFETY_STOP` / `Y_SAFETY_STOP` enabled - Endstops act as safety limits
@@ -82,6 +84,10 @@ shoulder pivot. Adjust at runtime with `M665` and save with `M500`.
 
 `MIDDLE_DEAD_ZONE_R` is currently `38 mm` to avoid commanding moves too close to the
 SCARA center region.
+
+Marlin's stock SCARA checks geometric reachability (outer radius and dead-zone), but
+does not model physical linkage self-collision or your custom endstop placements. Keep
+all new test moves slow and expand reachable workspace gradually.
 
 ## Endstops
 
