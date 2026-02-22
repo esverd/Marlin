@@ -6,6 +6,7 @@ Use this folder as the entry point for the custom Morgan SCARA setup in this rep
 
 - Physical setup and firmware mapping: `docs/physical-setup.md`
 - Development / bring-up plan (including future automatic homing): `docs/build-plan.md`
+- Coordinate validation script (pre-pen test path): `docs/scara/coordinate-validation.gcode`
 
 ## Current Hardware Snapshot
 

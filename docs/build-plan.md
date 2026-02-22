@@ -27,7 +27,7 @@
 
 ---
 
-## Phase 2: Kinematics Verification
+## Phase 2: Kinematics Calibration
 
 **Goal:** Confirm that Cartesian G-code commands produce correct arm movements.
 
@@ -59,7 +59,90 @@
 
 ---
 
-## Phase 3: Pen Mechanism
+## Phase 3: Coordinate Verification (current priority)
+
+**Goal:** Verify repeatable, accurate XY motion across a safe test set before adding a pen.
+
+### Standard Bring-Up Sequence
+1. `M502` then `M500` so EEPROM matches firmware defaults
+2. Confirm safety state:
+   - `M211` should report `S1`
+   - `M119` should show expected endstop states
+3. Set startup pose:
+   - Manually place arm at mechanical home
+   - `G90`
+   - `G92 X43.46 Y40.73 Z0`
+4. Use low speed during validation:
+   - Keep feedrate around `F120` (`2 mm/s`)
+
+### Coordinate Validation Plan
+1. Run short local moves around home to verify sign/direction and no skipped steps
+2. Run a medium-radius point set (all points outside dead zone)
+3. Run a box perimeter and diagonal checks
+4. Return to home and check drift with `M114`
+
+Use `docs/scara/coordinate-validation.gcode` as the baseline script.
+
+### Pass / Fail Criteria
+- Pass:
+  - No collisions or endstop impacts during scripted points
+  - Returns near the same physical location after looped tests
+  - No obvious cumulative drift after repeated paths
+- Fail:
+  - Any collision, chatter, stall, or large endpoint mismatch
+  - Position drift grows each loop (indicates skipped steps)
+
+---
+
+## Phase 4: Joint-Angle Limits (new)
+
+**Goal:** Reject kinematically reachable but physically unsafe targets before motion.
+
+### Why This Is Needed
+- Stock Marlin SCARA checks reach radius/dead-zone
+- It does not model your physical self-collision zones or linkage/endstop angle limits
+
+### Planned Implementation
+1. Add explicit joint limit configuration for your mechanism:
+   - `J1_MIN`, `J1_MAX` (absolute shoulder angle)
+   - `J2_REL_MIN`, `J2_REL_MAX` (elbow relative angle)
+2. Compute candidate joint angles from IK for each target move
+3. Reject moves that violate limits with a clear error message
+4. Keep a small guard margin (for example `2-5°`) near limits
+
+### Code Areas
+- Reachability and safety checks: `Marlin/src/module/motion.cpp`
+- SCARA kinematics helpers: `Marlin/src/module/scara.cpp`
+- Config constants: `Marlin/Configuration.h`
+
+---
+
+## Phase 5: Automatic Homing Sequence (new)
+
+**Goal:** Homing uses your linkage endstops and sets a repeatable, trusted XY state.
+
+### Target Homing Sequence
+1. Slow move Joint 1 toward its homing stop until trigger
+2. Back off a small angle
+3. Re-approach at slower speed for precision
+4. Set Joint 1 to calibrated endstop-contact angle
+5. Repeat for Joint 2
+6. Run forward kinematics from both calibrated joint angles to set XY home
+7. Mark XY as homed/trusted and synchronize planner state
+
+### Safety Requirements
+- Very low homing speed (10-20 deg/s equivalent)
+- Timeout / fail handling if an endstop never triggers
+- Debounce or confirmation read for stable endstop detection
+
+### Key Code Locations
+- Current SCARA homing guard (skips XY): `Marlin/src/module/motion.cpp`
+- SCARA home position logic: `Marlin/src/module/scara.cpp`
+- Endstop handling: `Marlin/src/module/endstops.cpp`
+
+---
+
+## Phase 6: Pen Mechanism
 
 **Goal:** Add servo-based pen up/down control.
 
@@ -78,38 +161,7 @@
 
 ---
 
-## Phase 4: Automatic Homing
-
-**Goal:** Use the endstops on both linkages for repeatable automatic homing.
-
-### Approach Options
-
-**Option A: Modify SCARA homing code**
-- The stock Morgan SCARA code in `Marlin/src/module/motion.cpp` (line ~2425)
-  explicitly skips X/Y homing for SCARA
-- Modify to allow endstop-based homing for the A and B axes
-- Each arm rotates until it hits its endstop, establishing a known angle
-- Set `MANUAL_X_HOME_POS` / `MANUAL_Y_HOME_POS` to the angles at endstop contact
-
-**Option B: Use sensorless homing (requires TMC drivers)**
-- Replace A4988 drivers with TMC2209
-- Use StallGuard for sensorless homing
-- More elegant but requires hardware change
-
-**Key code locations:**
-- Homing logic: `Marlin/src/module/motion.cpp` (~line 2425)
-- SCARA home position: `Marlin/src/module/scara.cpp` (`scara_set_axis_is_at_home()`)
-- Endstop handling: `Marlin/src/module/endstops.cpp`
-
-### Implementation Notes
-- Need to define the exact angle each arm is at when its endstop triggers
-- The endstop angle depends on physical mounting — measure once hardware is finalized
-- Homing speed should be slow for SCARA to avoid damage (10-20 deg/s)
-- Consider a two-stage homing: fast approach, back off, slow approach for precision
-
----
-
-## Phase 5: Drawing Pipeline
+## Phase 7: Drawing Pipeline
 
 **Goal:** Go from SVG/image to physical drawing.
 
