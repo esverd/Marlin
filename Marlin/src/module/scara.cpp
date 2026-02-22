@@ -74,15 +74,46 @@ float segments_per_second = DEFAULT_SEGMENTS_PER_SECOND;
 
 #if ENABLED(MORGAN_SCARA)
 
+  bool scara_angles_from_cartesian(const_float_t rx, const_float_t ry, ScaraJointAngles &angles) {
+    float C2;
+
+    // Translate SCARA to standard XY with scaling factor.
+    const xy_pos_t spos = { rx - scara_offset.x, ry - scara_offset.y };
+
+    const float H2 = HYPOT2(spos.x, spos.y);
+    if (L1 == L2)
+      C2 = H2 / L1_2_2 - 1;
+    else
+      C2 = (H2 - (L1_2 + L2_2)) / (2.0f * L1 * L2);
+
+    LIMIT(C2, -1, 1);
+
+    const float S2 = SQRT(_MAX(0.0f, 1.0f - sq(C2)));
+
+    // Unrotated Arm1 plus rotated Arm2 gives the distance from Center to End.
+    const float SK1 = L1 + L2 * C2;
+
+    // Rotated Arm2 gives the distance from Arm1 to Arm2.
+    const float SK2 = L2 * S2;
+
+    // Shoulder absolute angle.
+    const float THETA = ATAN2(SK1, SK2) - ATAN2(spos.x, spos.y);
+
+    // Elbow relative angle and absolute angle.
+    const float PSI = ATAN2(S2, C2);
+
+    angles.j1_abs = DEGREES(THETA);
+    angles.j2_rel = DEGREES(PSI);
+    angles.j2_abs = angles.j1_abs + angles.j2_rel;
+    return true;
+  }
+
   void scara_set_axis_is_at_home(const AxisEnum axis) {
     if (axis == Z_AXIS)
       current_position.z = Z_HOME_POS;
     else {
-      // MORGAN_SCARA uses a Cartesian XY home position
-      xyz_pos_t homeposition = { X_HOME_POS, Y_HOME_POS, Z_HOME_POS };
-      //DEBUG_ECHOLNPGM_P(PSTR("homeposition X"), homeposition.x, SP_Y_LBL, homeposition.y);
-
-      delta = homeposition;
+      // MORGAN_SCARA home is defined by measured joint angles at endstop contact.
+      delta.set(SCARA_HOME_J1_DEG, SCARA_HOME_J2_ABS_DEG, Z_HOME_POS);
       forward_kinematics(delta.a, delta.b);
       current_position[axis] = cartes[axis];
 
@@ -96,43 +127,20 @@ float segments_per_second = DEFAULT_SEGMENTS_PER_SECOND;
    *
    * See https://reprap.org/forum/read.php?185,283327
    *
-   * Maths and first version by QHARLEY.
-   * Integrated into Marlin and slightly restructured by Joachim Cerny.
+  * Maths and first version by QHARLEY.
+  * Integrated into Marlin and slightly restructured by Joachim Cerny.
    */
   void inverse_kinematics(const xyz_pos_t &raw) {
-    float C2, S2, SK1, SK2, THETA, PSI;
-
-    // Translate SCARA to standard XY with scaling factor
-    const xy_pos_t spos = raw - scara_offset;
-
-    const float H2 = HYPOT2(spos.x, spos.y);
-    if (L1 == L2)
-      C2 = H2 / L1_2_2 - 1;
+    ScaraJointAngles angles;
+    if (scara_angles_from_cartesian(raw.x, raw.y, angles))
+      delta.set(angles.j1_abs, angles.j2_abs, raw.z);
     else
-      C2 = (H2 - (L1_2 + L2_2)) / (2.0f * L1 * L2);
-
-    LIMIT(C2, -1, 1);
-
-    S2 = SQRT(1.0f - sq(C2));
-
-    // Unrotated Arm1 plus rotated Arm2 gives the distance from Center to End
-    SK1 = L1 + L2 * C2;
-
-    // Rotated Arm2 gives the distance from Arm1 to Arm2
-    SK2 = L2 * S2;
-
-    // Angle of Arm1 is the difference between Center-to-End angle and the Center-to-Elbow
-    THETA = ATAN2(SK1, SK2) - ATAN2(spos.x, spos.y);
-
-    // Angle of Arm2
-    PSI = ATAN2(S2, C2);
-
-    delta.set(DEGREES(THETA), DEGREES(SUM_TERN(MORGAN_SCARA, PSI, THETA)), raw.z);
+      delta.set(0, 0, raw.z);
 
     /*
       DEBUG_POS("SCARA IK", raw);
       DEBUG_POS("SCARA IK", delta);
-      DEBUG_ECHOLNPGM("  SCARA (x,y) ", sx, ",", sy, " C2=", C2, " S2=", S2, " Theta=", THETA, " Psi=", PSI);
+      DEBUG_ECHOLNPGM("  SCARA (x,y) ", raw.x, ",", raw.y, " theta=", angles.j1_abs, " psi=", angles.j2_rel);
     //*/
   }
 

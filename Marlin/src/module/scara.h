@@ -44,6 +44,12 @@ extern float segments_per_second;
                   L1_2 = FLOAT_SQ(L1), L1_2_2 = 2.0 * L1_2,
                   L2_2 = FLOAT_SQ(L2);
 
+  struct ScaraJointAngles {
+    float j1_abs, j2_abs, j2_rel;
+  };
+
+  bool scara_angles_from_cartesian(const_float_t rx, const_float_t ry, ScaraJointAngles &angles);
+
   void forward_kinematics(const_float_t a, const_float_t b);
 
 #endif

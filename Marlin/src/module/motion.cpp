@@ -161,6 +161,36 @@ xyz_pos_t cartes;
     abc_pos_t scara_home_offset;
   #endif
 
+  #if IS_SCARA
+    enum class ScaraReachabilityResult : uint8_t {
+      NONE,
+      OUTSIDE_RADIUS,
+      INSIDE_DEAD_ZONE,
+      JOINT1_LIMIT,
+      JOINT2_LIMIT
+    };
+
+    static ScaraReachabilityResult scara_reachability_result = ScaraReachabilityResult::NONE;
+
+    static void report_scara_reachability_failure() {
+      switch (scara_reachability_result) {
+        case ScaraReachabilityResult::OUTSIDE_RADIUS:
+          SERIAL_ECHOLNPGM("SCARA move rejected: target outside reach radius.");
+          break;
+        case ScaraReachabilityResult::INSIDE_DEAD_ZONE:
+          SERIAL_ECHOLNPGM("SCARA move rejected: target inside middle dead zone.");
+          break;
+        case ScaraReachabilityResult::JOINT1_LIMIT:
+          SERIAL_ECHOLNPGM("SCARA move rejected: J1 absolute angle limit exceeded.");
+          break;
+        case ScaraReachabilityResult::JOINT2_LIMIT:
+          SERIAL_ECHOLNPGM("SCARA move rejected: J2 relative angle limit exceeded.");
+          break;
+        default: break;
+      }
+    }
+  #endif
+
   #if HAS_SOFTWARE_ENDSTOPS
     float delta_max_radius, delta_max_radius_2;
   #elif IS_SCARA
@@ -633,6 +663,10 @@ void report_current_position_projected() {
 
     bool can_reach;
 
+    #if IS_SCARA
+      scara_reachability_result = ScaraReachabilityResult::NONE;
+    #endif
+
     #if ENABLED(DELTA)
 
       can_reach = HYPOT2(rx, ry) <= sq(PRINTABLE_RADIUS - inset + fslop);
@@ -650,12 +684,38 @@ void report_current_position_projected() {
     #elif IS_SCARA
 
       const float R2 = HYPOT2(rx - SCARA_OFFSET_X, ry - SCARA_OFFSET_Y);
-      can_reach = (
-        R2 <= sq(L1 + L2) - inset
+      const bool within_outer_radius = R2 <= sq(L1 + L2) - inset;
+      const bool outside_dead_zone =
         #if MIDDLE_DEAD_ZONE_R > 0
-          && R2 >= FLOAT_SQ(MIDDLE_DEAD_ZONE_R)
+          R2 >= FLOAT_SQ(MIDDLE_DEAD_ZONE_R);
+        #else
+          true;
         #endif
-      );
+
+      can_reach = within_outer_radius && outside_dead_zone;
+
+      #if ENABLED(SCARA_JOINT_LIMITS)
+        if (can_reach) {
+          ScaraJointAngles angles;
+          if (scara_angles_from_cartesian(rx, ry, angles)) {
+            const float j1_min = SCARA_J1_MIN_DEG + SCARA_JOINT_GUARD_DEG,
+                        j1_max = SCARA_J1_MAX_DEG - SCARA_JOINT_GUARD_DEG,
+                        j2_min = SCARA_J2_REL_MIN_DEG + SCARA_JOINT_GUARD_DEG,
+                        j2_max = SCARA_J2_REL_MAX_DEG - SCARA_JOINT_GUARD_DEG;
+
+            const bool j1_ok = WITHIN(angles.j1_abs, j1_min, j1_max),
+                       j2_ok = WITHIN(angles.j2_rel, j2_min, j2_max);
+
+            if (!j1_ok || !j2_ok) {
+              can_reach = false;
+              scara_reachability_result = j1_ok ? ScaraReachabilityResult::JOINT2_LIMIT : ScaraReachabilityResult::JOINT1_LIMIT;
+            }
+          }
+        }
+      #endif
+
+      if (!can_reach && scara_reachability_result == ScaraReachabilityResult::NONE)
+        scara_reachability_result = within_outer_radius ? ScaraReachabilityResult::INSIDE_DEAD_ZONE : ScaraReachabilityResult::OUTSIDE_RADIUS;
 
     #elif ENABLED(POLARGRAPH)
 
@@ -1550,7 +1610,12 @@ float get_move_distance(const xyze_pos_t &diff OPTARG(HAS_ROTATIONAL_AXES, bool 
     }
 
     // Fail if attempting move outside printable radius
-    if (!position_is_reachable(destination)) return true;
+    if (!position_is_reachable(destination)) {
+      #if IS_SCARA
+        report_scara_reachability_failure();
+      #endif
+      return true;
+    }
 
     // Get the linear distance in XYZ
     #if HAS_ROTATIONAL_AXES

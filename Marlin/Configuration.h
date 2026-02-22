@@ -1086,6 +1086,23 @@
     //#define DEBUG_SCARA_KINEMATICS
     #define FEEDRATE_SCALING        // Convert XY feedrate from mm/s to degrees/s on the fly
 
+    // Mechanical home pose measured at endstop contact.
+    // J1 is absolute shoulder angle, J2 is relative elbow angle (L2 relative to L1).
+    #define SCARA_HOME_J1_DEG      -30   // (deg)
+    #define SCARA_HOME_J2_REL_DEG  150   // (deg)
+    #define SCARA_HOME_J2_ABS_DEG  (SCARA_HOME_J1_DEG + SCARA_HOME_J2_REL_DEG)
+
+    // Joint-angle safety limits for collision prevention.
+    // Tighten these after measuring the real mechanical hard limits.
+    #define SCARA_JOINT_LIMITS
+    #if ENABLED(SCARA_JOINT_LIMITS)
+      #define SCARA_JOINT_GUARD_DEG   3  // (deg) Margin from configured limits
+      #define SCARA_J1_MIN_DEG     -120  // (deg) Shoulder absolute minimum
+      #define SCARA_J1_MAX_DEG      120  // (deg) Shoulder absolute maximum
+      #define SCARA_J2_REL_MIN_DEG   30  // (deg) Elbow relative minimum
+      #define SCARA_J2_REL_MAX_DEG  165  // (deg) Elbow relative maximum
+    #endif
+
     // Radius around the center where the arm cannot reach
     #define MIDDLE_DEAD_ZONE_R  38  // (mm)
 
