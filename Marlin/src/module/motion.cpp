@@ -166,20 +166,36 @@ xyz_pos_t cartes;
     };
 
     static ScaraReachabilityResult scara_reachability_result = ScaraReachabilityResult::NONE;
+    static xyz_float_t scara_last_reachability {
+      0, 0, 0
+    };
+    static ScaraJointAngles scara_last_angles {
+      0, 0, 0
+    };
+    static bool scara_last_angles_valid = false;
 
     static void report_scara_reachability_failure() {
+      SERIAL_ECHOLNPGM(
+        "SCARA reject target X", scara_last_reachability.x,
+        " Y", scara_last_reachability.y,
+        " R", SQRT(scara_last_reachability.z)
+      );
       switch (scara_reachability_result) {
         case ScaraReachabilityResult::OUTSIDE_RADIUS:
-          SERIAL_ECHOLNPGM("SCARA move rejected: target outside reach radius.");
+          SERIAL_ECHOLNPGM("SCARA move rejected: target outside reach radius (max ", L1 + L2, ").");
           break;
         case ScaraReachabilityResult::INSIDE_DEAD_ZONE:
-          SERIAL_ECHOLNPGM("SCARA move rejected: target inside middle dead zone.");
+          SERIAL_ECHOLNPGM("SCARA move rejected: target inside middle dead zone (min ", MIDDLE_DEAD_ZONE_R, ").");
           break;
         case ScaraReachabilityResult::JOINT1_LIMIT:
           SERIAL_ECHOLNPGM("SCARA move rejected: J1 absolute angle limit exceeded.");
+          if (scara_last_angles_valid)
+            SERIAL_ECHOLNPGM("  J1=", scara_last_angles.j1_abs, " limits=", SCARA_J1_MIN_DEG + SCARA_JOINT_GUARD_DEG, "..", SCARA_J1_MAX_DEG - SCARA_JOINT_GUARD_DEG);
           break;
         case ScaraReachabilityResult::JOINT2_LIMIT:
           SERIAL_ECHOLNPGM("SCARA move rejected: J2 relative angle limit exceeded.");
+          if (scara_last_angles_valid)
+            SERIAL_ECHOLNPGM("  J2rel=", scara_last_angles.j2_rel, " limits=", SCARA_J2_REL_MIN_DEG + SCARA_JOINT_GUARD_DEG, "..", SCARA_J2_REL_MAX_DEG - SCARA_JOINT_GUARD_DEG);
           break;
         default: break;
       }
@@ -666,6 +682,10 @@ void report_current_position_projected() {
 
     #if IS_SCARA
       scara_reachability_result = ScaraReachabilityResult::NONE;
+      scara_last_reachability.x = rx;
+      scara_last_reachability.y = ry;
+      scara_last_reachability.z = 0;
+      scara_last_angles_valid = false;
     #endif
 
     #if ENABLED(DELTA)
@@ -685,6 +705,7 @@ void report_current_position_projected() {
     #elif IS_SCARA
 
       const float R2 = HYPOT2(rx - SCARA_OFFSET_X, ry - SCARA_OFFSET_Y);
+      scara_last_reachability.z = R2;
       const bool within_outer_radius = R2 <= sq(L1 + L2) - inset;
       const bool outside_dead_zone =
         #if MIDDLE_DEAD_ZONE_R > 0
@@ -699,6 +720,8 @@ void report_current_position_projected() {
         if (can_reach) {
           ScaraJointAngles angles;
           if (scara_angles_from_cartesian(rx, ry, angles)) {
+            scara_last_angles = angles;
+            scara_last_angles_valid = true;
             const float j1_min = SCARA_J1_MIN_DEG + SCARA_JOINT_GUARD_DEG,
                         j1_max = SCARA_J1_MAX_DEG - SCARA_JOINT_GUARD_DEG,
                         j2_min = SCARA_J2_REL_MIN_DEG + SCARA_JOINT_GUARD_DEG,
