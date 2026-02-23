@@ -1096,11 +1096,11 @@
     // Tighten these after measuring the real mechanical hard limits.
     #define SCARA_JOINT_LIMITS
     #if ENABLED(SCARA_JOINT_LIMITS)
-      #define SCARA_JOINT_GUARD_DEG   3  // (deg) Margin from configured limits
-      #define SCARA_J1_MIN_DEG     -120  // (deg) Shoulder absolute minimum
-      #define SCARA_J1_MAX_DEG      120  // (deg) Shoulder absolute maximum
-      #define SCARA_J2_REL_MIN_DEG   30  // (deg) Elbow relative minimum
-      #define SCARA_J2_REL_MAX_DEG  165  // (deg) Elbow relative maximum
+      #define SCARA_JOINT_GUARD_DEG   2   // (deg) Margin from configured limits
+      #define SCARA_J1_MIN_DEG     -170   // (deg) Temporary bring-up range
+      #define SCARA_J1_MAX_DEG      170   // (deg) Temporary bring-up range
+      #define SCARA_J2_REL_MIN_DEG -170   // (deg) Temporary bring-up range
+      #define SCARA_J2_REL_MAX_DEG  170   // (deg) Temporary bring-up range
     #endif
 
     // Radius around the center where the arm cannot reach
