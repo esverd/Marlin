@@ -2284,27 +2284,20 @@ void prepare_line_to_destination() {
       #endif
     }
 
-    #if ANY(MORGAN_SCARA, MP_SCARA)
-      // Tell the planner the axis is at 0
-      current_position[axis] = 0;
-      sync_plan_position();
-      current_position[axis] = distance;
-      line_to_current_position(home_fr_mm_s);
-    #else
-      // Get the ABC or XYZ positions in mm
-      abce_pos_t target = planner.get_axis_positions_mm();
+    // Home the selected machine axis directly (ABC for kinematics, XYZ for Cartesian/Core).
+    // For SCARA this ensures G28 X / G28 Y target the joint motors and associated endstops.
+    abce_pos_t target = planner.get_axis_positions_mm();
 
-      target[axis] = 0;                         // Set the single homing axis to 0
-      planner.set_machine_position_mm(target);  // Update the machine position
+    target[axis] = 0;                         // Set the single homing axis to 0
+    planner.set_machine_position_mm(target);  // Update the machine position
 
-      #if HAS_DIST_MM_ARG
-        const xyze_float_t cart_dist_mm{0};
-      #endif
-
-      // Set delta/cartesian axes directly
-      target[axis] = distance;                  // The move will be towards the endstop
-      planner.buffer_segment(target OPTARG(HAS_DIST_MM_ARG, cart_dist_mm), home_fr_mm_s, active_extruder);
+    #if HAS_DIST_MM_ARG
+      const xyze_float_t cart_dist_mm{0};
     #endif
+
+    // Set delta/cartesian axes directly
+    target[axis] = distance;                  // The move will be towards the endstop
+    planner.buffer_segment(target OPTARG(HAS_DIST_MM_ARG, cart_dist_mm), home_fr_mm_s, active_extruder);
 
     planner.synchronize();
 
