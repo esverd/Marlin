@@ -187,7 +187,13 @@ xyz_pos_t cartes;
   #endif
 
   #if HAS_SOFTWARE_ENDSTOPS
-    float delta_max_radius, delta_max_radius_2;
+    #if IS_SCARA
+      // SCARA uses PRINTABLE_RADIUS for kinematic clipping.
+      // Without this initialization, radius clipping can collapse to zero after homing.
+      float delta_max_radius = PRINTABLE_RADIUS, delta_max_radius_2 = sq(PRINTABLE_RADIUS);
+    #else
+      float delta_max_radius, delta_max_radius_2;
+    #endif
   #elif IS_SCARA
     constexpr float delta_max_radius = PRINTABLE_RADIUS,
                     delta_max_radius_2 = sq(PRINTABLE_RADIUS);
